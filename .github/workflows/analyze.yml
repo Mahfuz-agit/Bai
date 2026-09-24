@@ -1,0 +1,35 @@
+name: Masterpiece AI Analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      input_file:
+        description: "Path to a JSON case file"
+        required: true
+        default: "examples/sample.json"
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run cognitive pipeline
+        run: python -m app.main --input "${{ inputs.input_file }}" --output output/result.json
+
+      - name: Publish result artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: masterpiece-analysis
+          path: output/result.json

@@ -1,0 +1,6 @@
+{
+  "case_id": "demo-001",
+  "content": "A fictional input case for testing the cognitive pipeline. The system should identify structure, uncertainty, and alternative explanations.",
+  "context": {"source": "demo"},
+  "constraints": ["Do not invent facts"]
+}
