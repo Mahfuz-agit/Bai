@@ -1,10 +1,10 @@
 name: Expand Project ZIP
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "*.zip"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,89 +14,75 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GH_PAT }}
           fetch-depth: 0
 
-      - name: Locate uploaded ZIP
+      - name: Find ZIP
         id: zip
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t zips < <(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -E '^[^/]+\.zip$' || true)
+          zip_file="$(find . -maxdepth 1 -type f -iname '*.zip' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+          test -n "$zip_file"
+          echo "path=$zip_file" >> "$GITHUB_OUTPUT"
 
-          if [[ "${#zips[@]}" -eq 0 ]]; then
-            echo "No root-level ZIP changed in this commit."
-            exit 1
-          fi
-
-          if [[ "${#zips[@]}" -gt 1 ]]; then
-            echo "More than one root-level ZIP changed in this commit:"
-            printf ' - %s\n' "${zips[@]}"
-            echo "Upload one project ZIP per commit."
-            exit 1
-          fi
-
-          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
-          echo "Using ZIP: ${zips[0]}"
-
-      - name: Expand ZIP into repository root
-        shell: bash
+      - name: Extract and replace project
         env:
-          ZIP_PATH: ${{ steps.zip.outputs.path }}
-        run: |
-          set -euo pipefail
-
-          STAGE="$(mktemp -d)"
-          trap 'rm -rf "$STAGE" "$BOOTSTRAP_BACKUP"' EXIT
-
-          BOOTSTRAP_BACKUP="$(mktemp)"
-          cp .github/workflows/zip-ingest.yml "$BOOTSTRAP_BACKUP"
-
-          unzip -q "$ZIP_PATH" -d "$STAGE"
-
-          # Ignore macOS metadata and unwrap a single top-level directory
-          # (e.g. masterpiece_ai/) when the archive contains one.
-          shopt -s dotglob nullglob
-          entries=("$STAGE"/*)
-          filtered=()
-          for entry in "${entries[@]}"; do
-            [[ "$(basename "$entry")" == "__MACOSX" ]] && continue
-            filtered+=("$entry")
-          done
-
-          if [[ "${#filtered[@]}" -eq 1 && -d "${filtered[0]}" ]]; then
-            SRC="${filtered[0]}"
-          else
-            SRC="$STAGE"
-          fi
-
-          # Remove the old project while preserving Git metadata, this installer,
-          # and every ZIP archive (so the source archive remains in the repo).
-          find . -mindepth 1 -maxdepth 1 -not -name '.git' -not -name '.github' -not -name '*.zip' -exec rm -rf {} +
-
-          cp -a "$SRC"/. .
-
-          # Never allow the extracted project to remove/replace the installer.
-          mkdir -p .github/workflows
-          cp "$BOOTSTRAP_BACKUP" .github/workflows/zip-ingest.yml
-
-          echo "Expanded $ZIP_PATH into repository root."
-          git status --short
-
-      - name: Commit expanded project
+          ZIP_FILE: ${{ steps.zip.outputs.path }}
         shell: bash
         run: |
           set -euo pipefail
+
+          tmp="$(mktemp -d)"
+          unzip -q "$ZIP_FILE" -d "$tmp"
+
+          shopt -s dotglob nullglob
+          entries=("$tmp"/*)
+
+          if [ "${#entries[@]}" -eq 1 ] && [ -d "${entries[0]}" ]; then
+            src="${entries[0]}"
+          else
+            src="$tmp"
+          fi
+
+          keep="$(mktemp)"
+          cp .github/workflows/zip-ingest.yml "$keep"
+
+          find . -mindepth 1 -maxdepth 1 \
+            ! -name ".git" \
+            ! -name ".github" \
+            ! -name "*.zip" \
+            -exec rm -rf {} +
+
+          find .github/workflows -mindepth 1 -maxdepth 1 \
+            ! -name "zip-ingest.yml" \
+            -exec rm -rf {} +
+
+          cp -a "$src"/. .
+
+          cp "$keep" .github/workflows/zip-ingest.yml
+
+          find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+          find . -type f \( -name "*.pyc" -o -name "*.pyo" \) -delete
+
+          rm -rf "$tmp" "$keep"
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add -A
 
           if git diff --cached --quiet; then
-            echo "No repository changes to commit."
+            echo "No changes."
             exit 0
           fi
 
           git commit -m "Expand project archive [skip ci]"
-          git push
+          git push origin HEAD:${GITHUB_REF_NAME}
