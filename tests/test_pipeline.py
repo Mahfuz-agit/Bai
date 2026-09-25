@@ -1,12 +1,7 @@
-from app.core.pipeline import CognitivePipeline
-from app.providers.mock import MockProvider
-from app.schemas.contracts import InputCase
+from app.knowledge.pipeline import build_library
 
-
-def test_pipeline_contract():
-    result = CognitivePipeline(MockProvider()).run(
-        InputCase(case_id="t1", content="One observation. Another observation.")
-    )
-    assert result.case_id == "t1"
-    assert result.decomposition
-    assert result.synthesis
+def test_build_empty_library(tmp_path):
+    out = tmp_path / "out"
+    result = build_library(tmp_path, out)
+    assert result["synthesis"]["book_count"] == 0
+    assert (out / "library_index.json").exists()

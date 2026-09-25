@@ -1,49 +1,27 @@
-name: Ingest Books
-
+name: Build Book Knowledge
 on:
+  workflow_dispatch:
   push:
     paths:
       - "books/**/*.pdf"
       - "books/*.pdf"
+      - "app/knowledge/**"
       - "app/books/**"
-      - "requirements.txt"
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
 jobs:
-  ingest:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Ingest every PDF
-        run: python -m app.books.ingest --repo .
-
-      - name: Commit knowledge library
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Build knowledge library
+        run: python -m app.knowledge.pipeline --input books --output data/library
+      - name: Commit knowledge
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/library
-          if git diff --cached --quiet; then
-            echo "No library changes."
-            exit 0
-          fi
-          git commit -m "Update book knowledge library [skip ci]"
-          git push
-
-      - name: Publish ingestion summary
-        uses: actions/upload-artifact@v4
-        with:
-          name: book-ingestion-summary
-          path: data/library/index.json
+          git diff --cached --quiet || git commit -m "Build book knowledge [skip ci]"
+          git push || true

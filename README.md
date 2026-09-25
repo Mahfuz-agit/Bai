@@ -1,39 +1,19 @@
-# Masterpiece AI — Personal Knowledge Engine
+# Masterpiece AI v0.4 — Knowledge Engine
 
-A model-agnostic intelligence engine designed to turn books into a connected, recallable knowledge base.
+A domain-specific personal knowledge engine for book/PDF understanding.
 
-## Book workflow
+Pipeline:
 
-Put any PDF anywhere under `books/`. **There is no filename convention.** The system discovers PDFs recursively, creates a stable content-based `book_id`, reads embedded PDF metadata when available, extracts page text, creates page-aware chunks, and writes a machine-readable library under `data/library/`.
+`PDFs → pages/chunks → concepts → claims → reasoning → relations → contradictions → cross-book synthesis → structured knowledge`
 
-```text
-books/*.pdf
-   ↓
-PDF discovery (filename-independent)
-   ↓
-content hash → stable book_id
-   ↓
-page extraction + metadata
-   ↓
-page-aware chunking
-   ↓
-data/library/documents.jsonl
-data/library/chunks.jsonl
-data/library/index.json
-```
+This version is model-agnostic and deterministic by default. It builds a structured knowledge base from books and is designed to accept a stronger LLM provider later without changing the storage/graph contracts.
 
-Scanned/image-heavy PDFs are not silently treated as readable text. They are flagged in the ingestion summary for a later OCR stage.
-
-## GitHub
-
-- `zip-ingest.yml` installs project archives.
-- `ingest-books.yml` automatically rebuilds the knowledge library when PDFs change.
-- `analyze.yml` remains the reasoning pipeline entry point.
-
-## Local run
+## Run locally
 
 ```bash
 pip install -r requirements.txt
-python -m app.books.ingest --repo .
-python -m app.main --input examples/sample.json
+pytest -q
+python -m app.knowledge.pipeline --input books --output data/library
 ```
+
+Put any `.pdf` files in `books/`. Filenames do not need a special naming convention.

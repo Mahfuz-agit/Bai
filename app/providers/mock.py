@@ -1,8 +1,8 @@
-from .base import ModelProvider
+from __future__ import annotations
+from typing import Any
+from .base import KnowledgeProvider
 
-
-class MockProvider(ModelProvider):
-    """Deterministic placeholder so the architecture can be tested before wiring a model API."""
-
-    def generate(self, *, system: str, user: str, temperature: float = 0.2, **kwargs) -> str:
-        return f"[MOCK]\nSYSTEM: {system[:120]}\nUSER: {user[:500]}"
+class MockProvider(KnowledgeProvider):
+    def analyze(self, text: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+        words = [w for w in text.split() if w]
+        return {"summary": " ".join(words[:80]), "word_count": len(words)}

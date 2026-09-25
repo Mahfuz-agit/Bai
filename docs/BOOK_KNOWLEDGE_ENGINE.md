@@ -1,22 +1,14 @@
 # Book Knowledge Engine
 
-## Identity
+PDF filenames are irrelevant to identity. A SHA-256 based content ID is used.
 
-Book identity is derived from a SHA-256 content hash. Filenames are descriptive only and are not part of the required naming contract. Duplicate copies with identical bytes receive the same `book_id`.
+Outputs per book:
+- `source.json`
+- `knowledge.json`
 
-## Extraction
+Library-level output:
+- `library_index.json`
 
-The first stage uses `pypdf` for embedded metadata and page text extraction. The engine records page numbers so later reasoning can cite the original location. It flags likely scanned PDFs rather than inventing text.
+The intended long-term flow is:
 
-## Chunking
-
-Chunks are built from consecutive non-empty pages with a target character ceiling. Each chunk stores the source `book_id` and page range. This creates the provenance layer needed for retrieval, comparison, contradiction checking, and later synthesis.
-
-## Next layers
-
-1. OCR fallback for scanned PDFs.
-2. Semantic embeddings and retrieval.
-3. Concepts/entities/claims extraction.
-4. Cross-book relationship graph.
-5. Claim-level contradiction and evidence checking.
-6. Recall/learning engine that turns the library into personal memory.
+`raw text → atomic claims → concepts → causal/semantic relations → contradiction checks → synthesis → recall practice`
