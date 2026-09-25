@@ -18,6 +18,9 @@ class Claim:
     evidence: str
     kind: str = "claim"
 
+    def to_dict(self) -> dict:
+        return asdict(self)
+
 @dataclass
 class Relation:
     source: str
@@ -34,6 +37,7 @@ class KnowledgeBook:
     relations: list[Relation] = field(default_factory=list)
     questions: list[str] = field(default_factory=list)
     insights: list[str] = field(default_factory=list)
+    reasoning: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)

@@ -17,7 +17,7 @@ def extract_claims(page_texts: list[tuple[int, str]], max_claims: int = 40) -> l
     claims: list[Claim] = []
     for page_no, text in page_texts:
         for s in _sentences(text):
-            if 12 <= len(s.split()) <= 70 and re.search(r"\b(is|are|means|because|therefore|leads|causes|can|cannot|should|must|often|usually|research|study|evidence|suggests|shows)\b", s, re.I):
+            if 8 <= len(s.split()) <= 70 and re.search(r"\b(is|are|means|because|therefore|leads|causes|can|cannot|should|must|often|usually|research|study|evidence|suggests|shows)\b", s, re.I):
                 cid = f"c{len(claims)+1:04d}"
                 claims.append(Claim(cid, s, page_no, s))
                 if len(claims) >= max_claims:
